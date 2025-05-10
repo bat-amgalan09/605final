@@ -95,7 +95,7 @@ def train_model_gpu(
 
         avg_test_loss = test_loss / test_tokens
         test_losses.append(avg_test_loss)
-        accuracy = 1 - avg_test_loss
+        accuracy = torch.exp(-avg_test_loss)
         accuracies.append(accuracy)
 
         if avg_test_loss < best_test_loss:
