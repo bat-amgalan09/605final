@@ -54,7 +54,9 @@ def train_model(
         throughputs.append(len(dataloader.dataset) / epoch_time)
 
         avg_loss = total_loss / total_tokens if total_tokens > 0 else float('inf')
-        accuracies.append(1 - avg_loss if avg_loss != float('inf') else 0)
+        accuracy = torch.exp(-torch.tensor(avg_test_loss)).item()
+        accuracies.append(accuracy)
+
 
     queue.put((rank, times, mem_usage, throughputs, energies, grad_times, accuracies))
 
