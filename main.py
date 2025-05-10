@@ -4,7 +4,8 @@ if __name__ == '__main__':
     import numpy as np
     from dataload import prepare_data
     from model import ChatbotModel
-    from train import train_model, train_model_gpu  # Single-core and GPU
+    from train import train_model
+    from train_gpu import train_model_gpu# Single-core and GPU
     from train_cpu import train_model as train_model_cpu  # Multi-core CPU
     from torch.utils.data import Subset
     from torch.multiprocessing import Process, Queue, set_start_method
