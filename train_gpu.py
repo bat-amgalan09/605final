@@ -96,6 +96,7 @@ def train_model_gpu(
         avg_test_loss = test_loss / test_tokens
         test_losses.append(avg_test_loss)
         accuracy = 1 / (1 + avg_test_loss)
+        print(f"🔍 Epoch {epoch}: avg_test_loss={avg_test_loss:.4f}, accuracy={accuracy:.4f}")  # <-- add this
         accuracies.append(accuracy)
 
 
