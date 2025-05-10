@@ -83,7 +83,9 @@ def train_model(
 
         avg_test_loss = test_loss / test_tokens if test_tokens > 0 else float('inf')
         test_losses.append(avg_test_loss)
-        accuracies.append(1 - avg_test_loss if avg_test_loss != float('inf') else 0)
+        accuracy = torch.exp(-torch.tensor(avg_test_loss)).item()
+        accuracies.append(accuracy)
+
 
         if avg_test_loss < best_test_loss:
             best_test_loss = avg_test_loss
