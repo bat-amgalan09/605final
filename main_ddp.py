@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # ⬇️ Pass the queue as an argument to all processes (only rank 0 will use it)
     mp.spawn(
         train_ddp,
-        args=(1000, 64, 10, queue),
+        args=(3000, 64, 10, queue),
         nprocs=num_gpus,
         join=True
     )
