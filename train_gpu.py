@@ -6,7 +6,6 @@ import psutil
 import os
 from typing import List, Tuple
 
-
 def train_model_gpu(
     model,
     train_loader,
@@ -18,7 +17,7 @@ def train_model_gpu(
     grad_clip=1.0,
     save_dir='checkpoints/gpu_baseline',
     verbose=True
-) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
+) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
 
     os.makedirs(save_dir, exist_ok=True)
 
@@ -82,6 +81,9 @@ def train_model_gpu(
         model.eval()
         test_loss = 0
         test_tokens = 0
+        total_correct = 0
+        total_label_tokens = 0
+        pad_token_id = tokenizer.pad_token_id
 
         with torch.no_grad():
             for input_ids, labels in test_loader:
@@ -89,16 +91,21 @@ def train_model_gpu(
                 labels = labels.to(device)
                 logits = model(input_ids, labels)
                 loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
-                token_count = (labels != tokenizer.pad_token_id).sum().item()
                 test_loss += loss.item()
-                test_tokens += token_count
+                test_tokens += (labels != pad_token_id).sum().item()
+
+                pred = logits.argmax(dim=-1)
+                correct = ((pred == labels) & (labels != pad_token_id)).sum().item()
+                total = (labels != pad_token_id).sum().item()
+                total_correct += correct
+                total_label_tokens += total
 
         avg_test_loss = test_loss / test_tokens
         test_losses.append(avg_test_loss)
-        accuracy = 1 / (1 + avg_test_loss)
-        print(f"🔍 Epoch {epoch}: avg_test_loss={avg_test_loss:.4f}, accuracy={accuracy:.4f}")  # <-- add this
+        accuracy = total_correct / total_label_tokens if total_label_tokens > 0 else 0.0
         accuracies.append(accuracy)
 
+        print(f" Epoch {epoch}: avg_test_loss={avg_test_loss:.4f}, accuracy={accuracy:.4f}")
 
         if avg_test_loss < best_test_loss:
             best_test_loss = avg_test_loss
