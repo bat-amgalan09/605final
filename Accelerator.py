@@ -10,7 +10,7 @@ from model import ChatbotModel
 from typing import List, Tuple
 
 def train_with_accelerator(
-    limit: int = 1000,
+    limit: int = 3000,
     batch_size: int = 64,
     epochs: int = 10,
     save_dir: str = "checkpoints/accelerator"
