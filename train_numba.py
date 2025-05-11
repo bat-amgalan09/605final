@@ -1,16 +1,11 @@
 import numpy as np
 import time
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from numba import cuda, float32
 from dataload import prepare_data
-from model import ChatbotModel
+from gpt2_utils import load_gpt2_model_and_tokenizer  #  Use GPT-2 loader
 import os
-from gpt2_utils import load_gpt2_model_and_tokenizer
-tokenizer, model = load_gpt2_model_and_tokenizer()
-model = model.to(device)
-
 
 def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
     os.makedirs(save_dir, exist_ok=True)
@@ -18,9 +13,12 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
 
-    train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
-    model = ChatbotModel(vocab_size).to(device)
-    criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, reduction='sum')
+    train_loader, test_loader, _, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
+
+    # Load GPT-2 model and tokenizer
+    tokenizer, model = load_gpt2_model_and_tokenizer()
+    model = model.to(device)
+
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     train_losses, test_losses, times, mem_usage, energies, grad_times, accuracies = [], [], [], [], [], [], []
@@ -37,8 +35,10 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
             labels = labels.to(device)
 
             optimizer.zero_grad()
-            logits = model(input_ids, labels)
-            loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+            outputs = model(input_ids=input_ids, labels=labels)
+            loss = outputs.loss
+            logits = outputs.logits
+
             tokens = (labels != tokenizer.pad_token_id).sum().item()
             (loss / tokens).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -62,7 +62,7 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
         train_losses.append(avg_train_loss)
         throughputs = [throughput]
 
-        # Evaluation with real accuracy
+        # Evaluation
         model.eval()
         test_loss, test_tokens = 0, 0
         total_correct = 0
@@ -73,8 +73,10 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
             for input_ids, labels in test_loader:
                 input_ids = input_ids.to(device)
                 labels = labels.to(device)
-                logits = model(input_ids, labels)
-                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+                outputs = model(input_ids=input_ids, labels=labels)
+                loss = outputs.loss
+                logits = outputs.logits
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
 
