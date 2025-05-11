@@ -79,7 +79,6 @@ def main():
         config=ds_config
     )
 
-    # Scheduler
 
 
     loss_fn = nn.CrossEntropyLoss()
