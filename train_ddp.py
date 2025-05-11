@@ -7,6 +7,8 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from dataload import prepare_data
 from model import ChatbotModel
+os.makedirs("checkpoints", exist_ok=True)
+
 
 def train_ddp(rank, limit, batch_size, epochs):
     os.environ['MASTER_ADDR'] = 'localhost'
