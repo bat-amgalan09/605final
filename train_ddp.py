@@ -7,7 +7,6 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from dataload import prepare_data
 from model import ChatbotModel
-os.makedirs("checkpoints", exist_ok=True)
 
 
 def train_ddp(rank, limit, batch_size, epochs):
@@ -65,6 +64,7 @@ def train_ddp(rank, limit, batch_size, epochs):
 
         if avg_test_loss < best_loss and rank == 0:
             best_loss = avg_test_loss
+            os.makedirs("checkpoints", exist_ok=True)
             torch.save(model.state_dict(), f"checkpoints/ddp_best_model.pt")
 
     dist.destroy_process_group()
