@@ -1,3 +1,13 @@
+import numpy as np
+import time
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from numba import cuda, float32
+from dataload import prepare_data
+from model import ChatbotModel
+import os
+
 def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
     os.makedirs(save_dir, exist_ok=True)
 
