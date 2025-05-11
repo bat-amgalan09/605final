@@ -1,14 +1,3 @@
-import os
-import time
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import psutil
-from accelerate import Accelerator
-from dataload import prepare_data
-from model import ChatbotModel
-from typing import List, Tuple
-
 def train_with_accelerator(
     limit: int = 3000,
     batch_size: int = 64,
@@ -18,8 +7,8 @@ def train_with_accelerator(
 
     os.makedirs(save_dir, exist_ok=True)
     accelerator = Accelerator()
-
     device = accelerator.device
+
     train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
     model = ChatbotModel(vocab_size)
 
@@ -63,22 +52,32 @@ def train_with_accelerator(
         energies.append(avg_cpu_percent * epoch_time)
 
         throughputs = len(train_loader.dataset) / epoch_time
-
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
 
+        # Evaluation
         model.eval()
         test_loss, test_tokens = 0, 0
+        total_correct = 0
+        total_label_tokens = 0
+        pad_token_id = tokenizer.pad_token_id
+
         with torch.no_grad():
             for input_ids, labels in test_loader:
                 logits = model(input_ids, labels)
                 loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
                 test_loss += loss.item()
-                test_tokens += (labels != tokenizer.pad_token_id).sum().item()
+                test_tokens += (labels != pad_token_id).sum().item()
+
+                pred = logits.argmax(dim=-1)
+                correct = ((pred == labels) & (labels != pad_token_id)).sum().item()
+                total = (labels != pad_token_id).sum().item()
+                total_correct += correct
+                total_label_tokens += total
 
         avg_test_loss = test_loss / test_tokens
         test_losses.append(avg_test_loss)
-        accuracy = 1 / (1 + avg_test_loss)
+        accuracy = total_correct / total_label_tokens if total_label_tokens > 0 else 0.0
         accuracies.append(accuracy)
 
         if avg_test_loss < best_test_loss and accelerator.is_main_process:
@@ -87,6 +86,6 @@ def train_with_accelerator(
 
         if accelerator.is_main_process:
             print(f"Epoch {epoch:2d}: Train Loss = {avg_train_loss:.4f}, Test Loss = {avg_test_loss:.4f}, "
-                  f"Time = {epoch_time:.2f}s, Energy = {energies[-1]:.2f}, Mem = {mem:.2f} MB")
+                  f"Accuracy = {accuracy:.4f}, Time = {epoch_time:.2f}s, Energy = {energies[-1]:.2f}, Mem = {mem:.2f} MB")
 
     return train_losses, test_losses, times, mem_usage, energies, grad_times, accuracies
