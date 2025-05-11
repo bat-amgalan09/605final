@@ -4,13 +4,13 @@ from train_ddp import train_ddp
 import os
 
 if __name__ == '__main__':
-    print("✅ Launching DDP Training Script")
+    print(" Launching DDP Training Script")
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     num_gpus = torch.cuda.device_count()
 
     print(f"Using {num_gpus} GPU(s) with DDP simulation")
 
-    # ✅ Create Queue inside __main__
+    #  Create Queue inside __main__
     mp.set_start_method("spawn", force=True)
     queue = mp.Queue() if num_gpus > 0 else None
 
@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     if queue is not None:
         train_losses, test_losses, times, mem, energy, grad_times, accuracies = queue.get()
-        print("✅ Collected metrics from DDP rank 0:")
+        print("Collected metrics from DDP rank 0:")
         print("Train Losses:", train_losses)
         print("Test Losses:", test_losses)
         print("Times:", times)
