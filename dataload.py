@@ -32,7 +32,7 @@ def prepare_data(tokenizer_name='gpt2', max_len=30, batch_size=64, limit=None):
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     tokenizer.pad_token = tokenizer.eos_token
 
-    dataset = load_dataset('daily_dialog', split='train')
+    dataset = load_dataset('daily_dialog', split='train',trust_remote_code=True)
     dialog_pairs = []
 
     for dialog in dataset['dialog']:
