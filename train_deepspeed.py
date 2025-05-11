@@ -69,6 +69,7 @@ def main():
         "gradient_accumulation_steps": 1,
         "fp16": {"enabled": True},
         "zero_optimization": {"stage": 2}
+        
     }
 
     # Initialize DeepSpeed
@@ -79,12 +80,7 @@ def main():
     )
 
     # Scheduler
-    lr_scheduler = get_scheduler(
-        name="linear",
-        optimizer=optimizer,
-        num_warmup_steps=0,
-        num_training_steps=len(train_loader) * epochs
-    )
+
 
     loss_fn = nn.CrossEntropyLoss()
 
@@ -104,7 +100,7 @@ def main():
 
             model_engine.backward(loss)
             model_engine.step()
-            lr_scheduler.step()
+
             total_loss += loss.item()
 
         end_time = time.time()
