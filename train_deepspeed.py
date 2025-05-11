@@ -21,6 +21,10 @@ def get_gpu_memory():
     return mem_used, mem_total
 
 def main():
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    vocab_size = tokenizer.vocab_size
+    model = ChatbotModel(vocab_size=vocab_size)
+
     # Training hyperparameters
     epochs = 10
     batch_size = 8  # Per-GPU batch size
@@ -29,9 +33,6 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     # Model and dataset
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    vocab_size = tokenizer.vocab_size
-    model = ChatbotModel(vocab_size=vocab_size)
     model = model.cuda()
 
 
