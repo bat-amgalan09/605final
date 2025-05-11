@@ -85,6 +85,8 @@ def train_ddp(rank, limit, batch_size, epochs, queue):
                 test_tokens += (labels != tokenizer.pad_token_id).sum().item()
 
         avg_test_loss = test_loss / test_tokens
+        epoch_time = time.time() - epoch_start
+        times.append(epoch_time)
         test_losses.append(avg_test_loss)
         accuracy = 1 / (1 + avg_test_loss)
         accuracies.append(accuracy)
