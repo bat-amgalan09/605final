@@ -7,6 +7,10 @@ from numba import cuda, float32
 from dataload import prepare_data
 from model import ChatbotModel
 import os
+from gpt2_utils import load_gpt2_model_and_tokenizer
+tokenizer, model = load_gpt2_model_and_tokenizer()
+model = model.to(device)
+
 
 def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
     os.makedirs(save_dir, exist_ok=True)
