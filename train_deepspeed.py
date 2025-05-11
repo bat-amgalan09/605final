@@ -11,7 +11,7 @@ import os
 import psutil
 import GPUtil
 from model import ChatbotModel
-from data import load_dataset, collate_fn
+from dataload import load_dataset, collate_fn
 
 def get_gpu_memory():
     gpus = GPUtil.getGPUs()
