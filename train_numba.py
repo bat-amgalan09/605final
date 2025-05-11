@@ -1,19 +1,8 @@
-import numpy as np
-import time
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from numba import cuda, float32
-from dataload import prepare_data
-from model import ChatbotModel
-import os
-
-
 def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
     os.makedirs(save_dir, exist_ok=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f" Using device: {device}")
+    print(f"Using device: {device}")
 
     train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
     model = ChatbotModel(vocab_size).to(device)
@@ -51,7 +40,7 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
         mem = torch.cuda.memory_allocated(device) / 1e6
         mem_usage.append(mem)
 
-        cpu_percent = os.getloadavg()[0]  # very rough CPU usage proxy
+        cpu_percent = os.getloadavg()[0]  # rough CPU usage proxy
         energies.append(cpu_percent * epoch_time)
 
         throughput = len(train_loader.dataset) / epoch_time
@@ -59,9 +48,13 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
         train_losses.append(avg_train_loss)
         throughputs = [throughput]
 
-        # Evaluations
+        # Evaluation with real accuracy
         model.eval()
         test_loss, test_tokens = 0, 0
+        total_correct = 0
+        total_label_tokens = 0
+        pad_token_id = tokenizer.pad_token_id
+
         with torch.no_grad():
             for input_ids, labels in test_loader:
                 input_ids = input_ids.to(device)
@@ -69,15 +62,21 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
                 logits = model(input_ids, labels)
                 loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
                 test_loss += loss.item()
-                test_tokens += (labels != tokenizer.pad_token_id).sum().item()
+                test_tokens += (labels != pad_token_id).sum().item()
+
+                pred = logits.argmax(dim=-1)
+                correct = ((pred == labels) & (labels != pad_token_id)).sum().item()
+                total = (labels != pad_token_id).sum().item()
+                total_correct += correct
+                total_label_tokens += total
 
         avg_test_loss = test_loss / test_tokens
         test_losses.append(avg_test_loss)
-        accuracy = 1 / (1 + avg_test_loss)
+        accuracy = total_correct / total_label_tokens if total_label_tokens > 0 else 0.0
         accuracies.append(accuracy)
 
         print(f"Epoch {epoch:2d}: Train Loss = {avg_train_loss:.4f}, Test Loss = {avg_test_loss:.4f}, "
-              f"Time = {epoch_time:.2f}s, Energy = {energies[-1]:.2f}, Mem = {mem:.2f} MB")
+              f"Accuracy = {accuracy:.4f}, Time = {epoch_time:.2f}s, Energy = {energies[-1]:.2f}, Mem = {mem:.2f} MB")
 
         if avg_test_loss < best_test_loss:
             best_test_loss = avg_test_loss
