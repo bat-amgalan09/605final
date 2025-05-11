@@ -12,6 +12,7 @@ import psutil
 import GPUtil
 from model import ChatbotModel
 from dataload import load_dataset, collate_fn
+from transformers import AutoTokenizer
 
 def get_gpu_memory():
     gpus = GPUtil.getGPUs()
@@ -28,8 +29,11 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     # Model and dataset
-    model = ChatbotModel()
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    vocab_size = tokenizer.vocab_size
+    model = ChatbotModel(vocab_size=vocab_size)
     model = model.cuda()
+
 
     train_dataset = load_dataset(split="train", limit=3000)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
