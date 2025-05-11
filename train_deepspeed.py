@@ -30,7 +30,7 @@ def main():
     model = ChatbotModel()
     model = model.cuda()
 
-    train_dataset = load_dataset(split="train", limit=10000)
+    train_dataset = load_dataset(split="train", limit=3000)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
     optimizer = AdamW(model.parameters(), lr=lr)
