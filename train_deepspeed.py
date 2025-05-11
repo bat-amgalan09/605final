@@ -45,12 +45,7 @@ def main():
         "train_batch_size": batch_size * torch.cuda.device_count(),
         "gradient_accumulation_steps": 1,
         "fp16": {"enabled": True},
-        "zero_optimization": {"stage": 2},
-        "checkpoint": {
-            "tag": "global_step1",
-            "save": True,
-            "load": False
-        }
+        "zero_optimization": {"stage": 2}
     }
 
     model_engine, optimizer, _, _ = deepspeed.initialize(
