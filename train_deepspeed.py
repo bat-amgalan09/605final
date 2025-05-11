@@ -1,18 +1,38 @@
-# train_deepspeed.py
-
+import os
+import time
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from transformers import AutoTokenizer, get_scheduler
 from torch.optim import AdamW
-from transformers import get_scheduler
 import deepspeed
-import time
-import os
-import psutil
 import GPUtil
+from datasets import load_dataset
 from model import ChatbotModel
-from dataload import load_dataset, collate_fn
-from transformers import AutoTokenizer
+
+
+def collate_fn(batch):
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    inputs = [dialog["dialog"][-1] for dialog in batch]  # last utterance as input
+    targets = [dialog["dialog"][-1] for dialog in batch]  # using same for simplicity
+
+    tokenized = tokenizer(
+        inputs,
+        padding=True,
+        truncation=True,
+        return_tensors="pt"
+    )
+
+    labels = tokenizer(
+        targets,
+        padding=True,
+        truncation=True,
+        return_tensors="pt"
+    )["input_ids"]
+
+    tokenized["labels"] = labels
+    return tokenized
+
 
 def get_gpu_memory():
     gpus = GPUtil.getGPUs()
@@ -20,28 +40,30 @@ def get_gpu_memory():
     mem_total = sum([gpu.memoryTotal for gpu in gpus])
     return mem_used, mem_total
 
-def main():
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    vocab_size = tokenizer.vocab_size
-    model = ChatbotModel(vocab_size=vocab_size)
 
-    # Training hyperparameters
+def main():
+    # Hyperparameters
     epochs = 10
-    batch_size = 8  # Per-GPU batch size
+    batch_size = 8  # per GPU
     lr = 5e-5
     save_dir = "checkpoints_deepspeed"
     os.makedirs(save_dir, exist_ok=True)
 
-    # Model and dataset
+    # Model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    vocab_size = tokenizer.vocab_size
+    model = ChatbotModel(vocab_size=vocab_size)
     model = model.cuda()
 
-
-    train_dataset = load_dataset(split="train", limit=3000)
+    # Dataset
+    dataset = load_dataset("daily_dialog")
+    train_dataset = dataset["train"].select(range(3000))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
+    # Optimizer
     optimizer = AdamW(model.parameters(), lr=lr)
 
-    # DeepSpeed config inline (or load from ds_config.json if you prefer)
+    # DeepSpeed config inline
     ds_config = {
         "train_batch_size": batch_size * torch.cuda.device_count(),
         "gradient_accumulation_steps": 1,
@@ -49,13 +71,14 @@ def main():
         "zero_optimization": {"stage": 2}
     }
 
+    # Initialize DeepSpeed
     model_engine, optimizer, _, _ = deepspeed.initialize(
-        args=None,
         model=model,
         optimizer=optimizer,
         config=ds_config
     )
 
+    # Scheduler
     lr_scheduler = get_scheduler(
         name="linear",
         optimizer=optimizer,
@@ -65,6 +88,7 @@ def main():
 
     loss_fn = nn.CrossEntropyLoss()
 
+    # Training loop
     for epoch in range(epochs):
         model_engine.train()
         total_loss = 0.0
@@ -81,17 +105,18 @@ def main():
             model_engine.backward(loss)
             model_engine.step()
             lr_scheduler.step()
-
             total_loss += loss.item()
 
         end_time = time.time()
         mem_used, mem_total = get_gpu_memory()
-        print(f"[Epoch {epoch + 1}] Loss: {total_loss / len(train_loader):.4f} | "
+
+        print(f"[Epoch {epoch+1}] Loss: {total_loss/len(train_loader):.4f} | "
               f"Time: {end_time - start_time:.2f}s | "
               f"GPU Mem: {mem_used:.2f}/{mem_total:.2f} MB")
 
         # Save checkpoint
-        model_engine.save_checkpoint(save_dir, tag=f"epoch_{epoch + 1}")
+        model_engine.save_checkpoint(save_dir, tag=f"epoch_{epoch+1}")
+
 
 if __name__ == "__main__":
     main()
