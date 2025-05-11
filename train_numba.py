@@ -9,11 +9,11 @@ from model import ChatbotModel
 import os
 
 
-def train_with_numba(limit=1000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
+def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
     os.makedirs(save_dir, exist_ok=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"✅ Using device: {device}")
+    print(f" Using device: {device}")
 
     train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
     model = ChatbotModel(vocab_size).to(device)
@@ -59,7 +59,7 @@ def train_with_numba(limit=1000, batch_size=64, epochs=10, save_dir='checkpoints
         train_losses.append(avg_train_loss)
         throughputs = [throughput]
 
-        # Eval
+        # Evaluations
         model.eval()
         test_loss, test_tokens = 0, 0
         with torch.no_grad():
