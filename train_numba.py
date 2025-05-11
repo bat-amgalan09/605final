@@ -80,8 +80,17 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
 
-                pred = logits.argmax(dim=-1)
-                correct = ((pred == labels) & (labels != pad_token_id)).sum().item()
+                # Shift predictions and labels to align
+                shift_logits = logits[:, :-1, :].contiguous()
+                shift_labels = labels[:, 1:].contiguous()
+
+# Predict token
+                pred = shift_logits.argmax(dim=-1)
+                mask = shift_labels != pad_token_id
+                correct = ((pred == shift_labels) & mask).sum().item()
+                total = mask.sum().item()
+                accuracy = correct / total if total > 0 else 0.0
+
                 total = (labels != pad_token_id).sum().item()
                 total_correct += correct
                 total_label_tokens += total
