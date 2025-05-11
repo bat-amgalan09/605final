@@ -11,18 +11,24 @@ import alpa
 from alpa import parallelize
 from datasets import load_dataset
 import psutil
-import pynvml
 
-# Initialize NVML for GPU memory tracking
-p.random.seed(0)
-pynvml.nvmlInit()
-handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+try:
+    import pynvml
+    pynvml.nvmlInit()
+    has_nvml = True
+    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+except ImportError:
+    has_nvml = False
 
+
+# Utility to measure GPU memory usage
 def get_gpu_memory():
-    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-    return mem_info.used / 1e6  # in MB
+    if has_nvml:
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        return mem_info.used / 1e6  # MB
+    return 0
 
-# Define a simple model
+# Simple model definition
 class ChatMLP(nn.Module):
     hidden_size: int
     vocab_size: int
@@ -34,21 +40,19 @@ class ChatMLP(nn.Module):
         x = nn.Dense(self.vocab_size)(x)
         return x
 
-# Training step
+# Training step decorated with Alpa parallelization
 @parallelize
 def train_step(state, batch_inputs, batch_labels):
     def loss_fn(params):
         logits = state.apply_fn({'params': params}, batch_inputs)
         loss = optax.softmax_cross_entropy_with_integer_labels(logits, batch_labels).mean()
         return loss
-
     grads = jax.grad(loss_fn)(state.params)
     return state.apply_gradients(grads=grads)
 
 def compute_loss(state, batch_inputs, batch_labels):
     logits = state.apply_fn({'params': state.params}, batch_inputs)
-    loss = optax.softmax_cross_entropy_with_integer_labels(logits, batch_labels).mean()
-    return loss
+    return optax.softmax_cross_entropy_with_integer_labels(logits, batch_labels).mean()
 
 def prepare_data(limit=1000, max_len=30):
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -70,7 +74,7 @@ def prepare_data(limit=1000, max_len=30):
         input_ids = tokenizer.encode(inp, max_length=max_len, truncation=True, padding="max_length")
         target_ids = tokenizer.encode(tgt, max_length=max_len, truncation=True, padding="max_length")
         inputs.append(input_ids)
-        targets.append(target_ids[0])  # for simplicity
+        targets.append(target_ids[0])
 
     return jnp.array(inputs), jnp.array(targets), tokenizer.vocab_size
 
@@ -86,11 +90,8 @@ def main():
     rng = jax.random.PRNGKey(0)
     state = create_train_state(rng, model, learning_rate=1e-3)
 
-    epochs = 10
-    batch_size = 64
     print("\n🚀 Starting Alpa Training")
-
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, 11):
         start = time.time()
         cpu_before = psutil.cpu_percent(interval=None)
         gpu_mem = get_gpu_memory()
@@ -99,18 +100,17 @@ def main():
         inputs_shuffled = inputs[perm]
         targets_shuffled = targets[perm]
 
-        for i in range(0, len(inputs), batch_size):
-            batch_inputs = inputs_shuffled[i:i+batch_size]
-            batch_labels = targets_shuffled[i:i+batch_size]
+        for i in range(0, len(inputs), 64):
+            batch_inputs = inputs_shuffled[i:i+64]
+            batch_labels = targets_shuffled[i:i+64]
             state = train_step(state, batch_inputs, batch_labels)
 
-        train_loss = compute_loss(state, inputs[:batch_size], targets[:batch_size])
-
+        loss = compute_loss(state, inputs[:64], targets[:64])
         end = time.time()
         cpu_after = psutil.cpu_percent(interval=None)
         energy = ((cpu_before + cpu_after) / 2) * (end - start)
 
-        print(f"Epoch {epoch:2d}: Train Loss = {train_loss:.4f}, Time = {end-start:.2f}s, Energy = {energy:.2f}, Mem = {gpu_mem:.2f} MB")
+        print(f"Epoch {epoch:2d}: Train Loss = {loss:.4f}, Time = {end-start:.2f}s, Energy = {energy:.2f}, Mem = {gpu_mem:.2f} MB")
 
 if __name__ == "__main__":
     main()
