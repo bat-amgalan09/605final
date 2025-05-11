@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import time
 import psutil
@@ -15,23 +14,15 @@ def train_model_gpu(
     epochs=10,
     lr=0.001,
     grad_clip=1.0,
-    save_dir='checkpoints/gpu_baseline',
+    save_dir='checkpoints/gpu_gpt2',
     verbose=True
 ) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
 
     os.makedirs(save_dir, exist_ok=True)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, reduction='sum')
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    train_losses = []
-    test_losses = []
-    times = []
-    mem_usage = []
-    throughputs = []
-    energies = []
-    grad_times = []
-    accuracies = []
+    train_losses, test_losses, times, mem_usage, throughputs, energies, grad_times, accuracies = [], [], [], [], [], [], [], []
     best_test_loss = float('inf')
 
     for epoch in range(1, epochs + 1):
@@ -41,7 +32,6 @@ def train_model_gpu(
 
         total_loss = 0
         total_tokens = 0
-
         cpu_percent_before = psutil.cpu_percent(interval=None)
 
         for input_ids, labels in train_loader:
@@ -49,8 +39,9 @@ def train_model_gpu(
             labels = labels.to(device)
 
             optimizer.zero_grad()
-            logits = model(input_ids, labels)
-            loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+            outputs = model(input_ids=input_ids, labels=labels)
+            loss = outputs.loss
+            logits = outputs.logits
 
             token_count = (labels != tokenizer.pad_token_id).sum().item()
             (loss / token_count).backward()
@@ -89,14 +80,20 @@ def train_model_gpu(
             for input_ids, labels in test_loader:
                 input_ids = input_ids.to(device)
                 labels = labels.to(device)
-                logits = model(input_ids, labels)
-                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+                outputs = model(input_ids=input_ids, labels=labels)
+                loss = outputs.loss
+                logits = outputs.logits
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
 
-                pred = logits.argmax(dim=-1)
-                correct = ((pred == labels) & (labels != pad_token_id)).sum().item()
-                total = (labels != pad_token_id).sum().item()
+                # Shift logits and labels for GPT-2 accuracy
+                shift_logits = logits[:, :-1, :].contiguous()
+                shift_labels = labels[:, 1:].contiguous()
+                pred = shift_logits.argmax(dim=-1)
+                mask = (shift_labels != pad_token_id)
+                correct = ((pred == shift_labels) & mask).sum().item()
+                total = mask.sum().item()
                 total_correct += correct
                 total_label_tokens += total
 
