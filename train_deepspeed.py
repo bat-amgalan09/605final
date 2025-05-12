@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import torch
 import torch.optim as optim
 import psutil
@@ -8,23 +9,27 @@ from dataload import prepare_data
 from gpt2_utils import load_gpt2_model_and_tokenizer
 
 
-def train_with_deepspeed(batch_size=8, epochs=10, limit=3000, save_dir="checkpoints/deepspeed"):
+def train_with_deepspeed(
+    batch_size=8,
+    epochs=10,
+    limit=3000,
+    save_dir="checkpoints/deepspeed"
+):
     os.makedirs(save_dir, exist_ok=True)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load GPT-2 tokenizer and model
     tokenizer, model = load_gpt2_model_and_tokenizer()
 
+    # Prepare data
     train_loader, test_loader, _, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
-
     optimizer = optim.Adam(model.parameters(), lr=5e-5)
 
-    ds_config = {
-        "train_batch_size": batch_size * torch.cuda.device_count(),
-        "gradient_accumulation_steps": 1,
-        "fp16": {"enabled": True},
-        "zero_optimization": {"stage": 2}
-    }
+    # Load DeepSpeed config from file
+    with open("ds_config.json") as f:
+        ds_config = json.load(f)
 
+    # Initialize DeepSpeed
     model_engine, optimizer, _, _ = deepspeed.initialize(
         model=model,
         optimizer=optimizer,
@@ -66,12 +71,13 @@ def train_with_deepspeed(batch_size=8, epochs=10, limit=3000, save_dir="checkpoi
         # Evaluation
         model_engine.eval()
         test_loss, test_tokens = 0, 0
-        correct, total_label_tokens = 0, 0
+        total_correct, total_label_tokens = 0, 0
 
         with torch.no_grad():
             for input_ids, labels in test_loader:
                 input_ids = input_ids.to(device)
                 labels = labels.to(device)
+
                 outputs = model_engine(input_ids=input_ids, labels=labels)
                 loss = outputs.loss
                 logits = outputs.logits
@@ -82,17 +88,21 @@ def train_with_deepspeed(batch_size=8, epochs=10, limit=3000, save_dir="checkpoi
                 shift_labels = labels[:, 1:].contiguous()
                 preds = shift_logits.argmax(dim=-1)
                 mask = (shift_labels != pad_token_id)
-                correct += ((preds == shift_labels) & mask).sum().item()
-                total_label_tokens += mask.sum().item()
+                correct = ((preds == shift_labels) & mask).sum().item()
+                total = mask.sum().item()
+                total_correct += correct
+                total_label_tokens += total
 
         avg_test_loss = test_loss / test_tokens
-        accuracy = correct / total_label_tokens if total_label_tokens > 0 else 0.0
+        accuracy = total_correct / total_label_tokens if total_label_tokens > 0 else 0.0
 
         print(f"[DeepSpeed] Epoch {epoch}: Test Loss = {avg_test_loss:.4f}, Accuracy = {accuracy:.4f}")
 
-        if avg_test_loss < best_test_loss:
+        # Save only the best checkpoint on rank 0
+        if model_engine.global_rank == 0 and avg_test_loss < best_test_loss:
             best_test_loss = avg_test_loss
             model_engine.save_checkpoint(save_dir, tag=f"best_epoch{epoch}")
+
 
 if __name__ == "__main__":
     train_with_deepspeed()
