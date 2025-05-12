@@ -4,8 +4,8 @@ import torch
 import torch.optim as optim
 import psutil
 from accelerate import Accelerator
-from dataload import prepare_data
-from gpt2_utils import load_gpt2_model_and_tokenizer
+from Chatbot_model.dataload import prepare_data
+from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
 from typing import List, Tuple
 
 def train_with_accelerator(
@@ -24,7 +24,7 @@ def train_with_accelerator(
     # GPT-2 model
     tokenizer, model = load_gpt2_model_and_tokenizer()
     model = model.to(device)
-
+    # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     model, optimizer, train_loader, test_loader = accelerator.prepare(model, optimizer, train_loader, test_loader)
 
@@ -39,7 +39,7 @@ def train_with_accelerator(
         cpu_percent_before = psutil.cpu_percent(interval=None)
         epoch_start = time.time()
         grad_start = time.time()
-
+        
         for input_ids, labels in train_loader:
             optimizer.zero_grad()
             outputs = model(input_ids=input_ids, labels=labels)
@@ -68,7 +68,7 @@ def train_with_accelerator(
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
 
-        # Evaluation with accuracy shift
+        # Evaluation
         model.eval()
         test_loss, test_tokens = 0, 0
         total_correct = 0
