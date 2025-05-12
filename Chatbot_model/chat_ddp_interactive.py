@@ -1,25 +1,21 @@
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
-# === Load tokenizer ===
+#Tokenizers and gpt-2
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
-
-# === Load GPT-2 architecture ===
 model = GPT2LMHeadModel.from_pretrained("gpt2")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# === Load DDP-trained weights and remove "module." prefix ===
+#DDp saved chckpoint
 checkpoint_path = "checkpoints/ddp_best_model.pt"
 state_dict = torch.load(checkpoint_path, map_location=device)
 clean_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
-
 model.load_state_dict(clean_state_dict)
 model.to(device)
 model.eval()
-
-# === Interactive Chat Loop ===
-print("🤖 DDP-trained GPT-2 chatbot is ready! Type 'exit' to quit.")
+#Chatting
+print("DDP chatbot: Type 'exit' to quit.")
 while True:
     user_input = input("You: ")
     if user_input.lower() in ["exit", "quit"]:
