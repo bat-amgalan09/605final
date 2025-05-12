@@ -1,10 +1,8 @@
-Setup
+#Setup
 Create a conda environment with python 3.12
 
-conda create -n pathfinder python=3.12
-conda activate pathfinder
-Install requirements
 
+```bash
 python3 -m pip install -r requirements.txt
 
 #GPT-2 Chatbot Acceleration Benchmark
