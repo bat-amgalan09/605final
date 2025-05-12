@@ -9,7 +9,7 @@ from gpt2_utils import load_gpt2_model_and_tokenizer
 from typing import List, Tuple
 
 def train_with_accelerator(
-    limit: int = 3000,
+    limit: int = 10000,
     batch_size: int = 64,
     epochs: int = 10,
     save_dir: str = "checkpoints/accelerator"
