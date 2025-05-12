@@ -29,7 +29,7 @@ if __name__ == '__main__':
     labels = []
 
     # Data prep
-    train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=64, limit=100)
+    train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=64, limit=3000)
 
     # Single-Core Training
     print("\nSingle-Core Training")
