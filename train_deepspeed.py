@@ -18,7 +18,6 @@ def train_with_deepspeed(
 ):
     os.makedirs(save_dir, exist_ok=True)
 
-    # ✅ Environment config to debug NCCL timeout issues
     os.environ["NCCL_DEBUG"] = "INFO"
     os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"
     os.environ["NCCL_IB_DISABLE"] = "1"
@@ -61,16 +60,17 @@ def train_with_deepspeed(
         for input_ids, _ in train_loader:
             input_ids = input_ids.to(device)
             labels = input_ids[:, 1:].clone().long()
-            input_ids = input_ids[:, :-1]  # input and label aligned
+            input_ids = input_ids[:, :-1]
 
-            outputs = model_engine(input_ids).float()  # shape: [batch, seq_len, vocab]
-            if outputs.size(1) != labels.size(1):
-                min_len = min(outputs.size(1), labels.size(1))
-                outputs = outputs[:, :min_len, :]
-                labels = labels[:, :min_len]
+            outputs = model_engine(input_ids).float()
+            if outputs.dim() == 2:
+                outputs = outputs.unsqueeze(1)  # Fix for LSTM output shape if missing sequence dim
+
+            min_len = min(outputs.size(1), labels.size(1))
+            outputs = outputs[:, :min_len, :]
+            labels = labels[:, :min_len]
+
             loss = criterion(outputs.reshape(-1, outputs.size(-1)), labels.reshape(-1))
-
-
             token_count = (labels != tokenizer.pad_token_id).sum().item()
             model_engine.backward(loss / token_count)
             model_engine.step()
@@ -92,7 +92,6 @@ def train_with_deepspeed(
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
 
-        # Eval
         model_engine.eval()
         test_loss, test_tokens = 0, 0
         total_correct, total_label_tokens = 0, 0
@@ -103,7 +102,14 @@ def train_with_deepspeed(
                 input_ids = input_ids[:, :-1]
 
                 logits = model_engine(input_ids).float()
-                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+                if logits.dim() == 2:
+                    logits = logits.unsqueeze(1)
+
+                min_len = min(logits.size(1), labels.size(1))
+                logits = logits[:, :min_len, :]
+                labels = labels[:, :min_len]
+
+                loss = criterion(logits.reshape(-1, logits.size(-1)), labels.reshape(-1))
                 test_loss += loss.item()
                 test_tokens += (labels != tokenizer.pad_token_id).sum().item()
 
