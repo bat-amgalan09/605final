@@ -3,27 +3,25 @@ import time
 import torch
 import torch.optim as optim
 from numba import cuda, float32
-from dataload import prepare_data
-from gpt2_utils import load_gpt2_model_and_tokenizer  #  Use GPT-2 loader
+from Chatbot_model.dataload import prepare_data
+from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer 
 import os
-
-def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
+#Limiting the training batch to 10000 so that it can be faster, and for better accuracy, use 20-50 epochs. Saves the model 
+def train_with_numba(limit=10000, batch_size=64, epochs=10, save_dir='checkpoints/numba_gpu'):
     os.makedirs(save_dir, exist_ok=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
-
+    
     train_loader, test_loader, _, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
-
-    # Load GPT-2 model and tokenizer
     tokenizer, model = load_gpt2_model_and_tokenizer()
     model = model.to(device)
-
+    #Training optimizer
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-
+    
     train_losses, test_losses, times, mem_usage, energies, grad_times, accuracies = [], [], [], [], [], [], []
     best_test_loss = float('inf')
-
+    #Epoch Start
     for epoch in range(1, epochs + 1):
         model.train()
         start_time = time.time()
@@ -50,13 +48,13 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
         grad_times.append(time.time() - grad_start)
         epoch_time = time.time() - start_time
         times.append(epoch_time)
-
+        #Memory
         mem = torch.cuda.memory_allocated(device) / 1e6
         mem_usage.append(mem)
-
-        cpu_percent = os.getloadavg()[0]  # rough CPU usage proxy
+        #CPU Usage
+        cpu_percent = os.getloadavg()[0]
         energies.append(cpu_percent * epoch_time)
-
+        #Throughput
         throughput = len(train_loader.dataset) / epoch_time
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
@@ -79,12 +77,10 @@ def train_with_numba(limit=3000, batch_size=64, epochs=10, save_dir='checkpoints
                 logits = outputs.logits
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
-
-                # Shift predictions and labels to align
                 shift_logits = logits[:, :-1, :].contiguous()
                 shift_labels = labels[:, 1:].contiguous()
 
-# Predict token
+                #Token Prediction for loss calculation
                 pred = shift_logits.argmax(dim=-1)
                 mask = shift_labels != pad_token_id
                 correct = ((pred == shift_labels) & mask).sum().item()
