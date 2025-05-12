@@ -1,0 +1,5 @@
+Method,Final Accuracy,Final Test Loss,Total Time (s),Peak Memory (MB),Peak Energy (J),Throughput (samples/sec)
+DDP,0.8975,0.0001,107.93,4026,,135.27
+GPU (Standard),0.468,0.0006,151.5,3527,95.45,66.0
+HF Accelerator,0.796,0.0002,109.1,4635,111.86,91.64
+DeepSpeed,0.8334,0.4389,159.35,5930,,62.75
