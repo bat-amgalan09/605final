@@ -9,8 +9,8 @@ from gpt2_utils import load_gpt2_model_and_tokenizer
 # Training parameters
 EPOCHS = 10
 BATCH_SIZE = 64
-MAX_LEN = 64
-LIMIT = 5000
+MAX_LEN = 50
+LIMIT = 10000
 
 def loss_fn(logits, labels, pad_token_id):
     shift_logits = logits[:, :-1, :].contiguous()
