@@ -54,7 +54,7 @@ def compute_loss(state, batch_inputs, batch_labels):
     logits = state.apply_fn({'params': state.params}, batch_inputs)
     return optax.softmax_cross_entropy_with_integer_labels(logits, batch_labels).mean()
 
-def prepare_data(limit=1000, max_len=30):
+def prepare_data(limit=10000, max_len=30):
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -90,7 +90,7 @@ def main():
     rng = jax.random.PRNGKey(0)
     state = create_train_state(rng, model, learning_rate=1e-3)
 
-    print("\n🚀 Starting Alpa Training")
+    print("\n Starting Alpa Training")
     for epoch in range(1, 11):
         start = time.time()
         cpu_before = psutil.cpu_percent(interval=None)
