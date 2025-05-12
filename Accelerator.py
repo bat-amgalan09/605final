@@ -1,13 +1,13 @@
 import os
 import time
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import psutil
 from accelerate import Accelerator
 from dataload import prepare_data
-from model import ChatbotModel
+from gpt2_utils import load_gpt2_model_and_tokenizer
 from typing import List, Tuple
+
 def train_with_accelerator(
     limit: int = 3000,
     batch_size: int = 64,
@@ -19,12 +19,13 @@ def train_with_accelerator(
     accelerator = Accelerator()
     device = accelerator.device
 
-    train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
-    model = ChatbotModel(vocab_size)
+    train_loader, test_loader, _, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, reduction='sum')
+    # GPT-2 model
+    tokenizer, model = load_gpt2_model_and_tokenizer()
+    model = model.to(device)
+
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-
     model, optimizer, train_loader, test_loader = accelerator.prepare(model, optimizer, train_loader, test_loader)
 
     train_losses, test_losses = [], []
@@ -41,8 +42,10 @@ def train_with_accelerator(
 
         for input_ids, labels in train_loader:
             optimizer.zero_grad()
-            logits = model(input_ids, labels)
-            loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+            outputs = model(input_ids=input_ids, labels=labels)
+            loss = outputs.loss
+            logits = outputs.logits
+
             tokens = (labels != tokenizer.pad_token_id).sum().item()
             accelerator.backward(loss / tokens)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -65,7 +68,7 @@ def train_with_accelerator(
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
 
-        # Evaluation
+        # Evaluation with accuracy shift
         model.eval()
         test_loss, test_tokens = 0, 0
         total_correct = 0
@@ -74,14 +77,18 @@ def train_with_accelerator(
 
         with torch.no_grad():
             for input_ids, labels in test_loader:
-                logits = model(input_ids, labels)
-                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+                outputs = model(input_ids=input_ids, labels=labels)
+                loss = outputs.loss
+                logits = outputs.logits
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
 
-                pred = logits.argmax(dim=-1)
-                correct = ((pred == labels) & (labels != pad_token_id)).sum().item()
-                total = (labels != pad_token_id).sum().item()
+                shift_logits = logits[:, :-1, :].contiguous()
+                shift_labels = labels[:, 1:].contiguous()
+                pred = shift_logits.argmax(dim=-1)
+                mask = (shift_labels != pad_token_id)
+                correct = ((pred == shift_labels) & mask).sum().item()
+                total = mask.sum().item()
                 total_correct += correct
                 total_label_tokens += total
 
