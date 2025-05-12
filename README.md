@@ -55,4 +55,5 @@ python chat_ddp_interactive.py
 ```
 ## Python, hardware dependency
 
-Pytorch.ddp, cpu, standard gpu processes doesn't require specific versions. But multi GPU utilization will require the system to use CUDA 12.8.
+Cpu, standard gpu processes doesn't require specific versions. But multi GPU utilization will require the system to use CUDA 12+ with correct driver to be used. As for ALPA, it is confusing to find right versions due to its dependency on JAXlib.
+
