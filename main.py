@@ -33,7 +33,7 @@ if __name__ == '__main__':
     train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=64, limit=100)
 
     # Single-Core Training
-    print("\n🔁 Starting Single-Core Training...")
+    print("\n Starting Single-Core Training...")
     model = ChatbotModel(vocab_size).to(device)
     train_losses, test_losses, times, mem, throughputs, energies, grad_times, accuracies = train_model(
         model=model,
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     labels.append("Single-core")
 # Multi-core CPU Training
 if ENABLE_PARALLEL:
-    print("\n🔁 Starting Multi-Core Training...")
+    print("\nStarting Multi-Core Training...")
     set_start_method("spawn", force=True)
     num_cores = 4
 
@@ -81,7 +81,7 @@ if ENABLE_PARALLEL:
     for p in processes:
         p.join()
 
-    # ✅ This part was wrongly unindented — now fixed:
+    #  This part was wrongly unindented — now fixed:
     process_metrics = []
     for _ in range(num_cores):
         rank, times, mem, throughputs, energies, grad_times, accuracies = queue.get()
@@ -105,7 +105,7 @@ if ENABLE_PARALLEL:
 
 
     # Visualize Training Metrics
-    print("\n📊 lengths:")
+    print("\n lengths:")
     print("throughputs:", len(all_throughputs))
     print("energies:", len(all_energies))
     print("grad_times:", len(all_grad_times))
@@ -126,4 +126,4 @@ if ENABLE_PARALLEL:
         test_losses=all_test_losses
     )
 
-    print("✅ All training and visualization completed.")
+    print("All training and visualization completed.")
