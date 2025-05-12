@@ -11,8 +11,8 @@ from transformers import get_scheduler
 
 
 def train_with_deepspeed(
-    limit=5000,
-    batch_size=32,
+    limit=3000,
+    batch_size=64,
     epochs=10,
     save_dir='checkpoints/deepspeed'
 ):
@@ -58,12 +58,13 @@ def train_with_deepspeed(
         total_loss, total_tokens = 0, 0
         cpu_before = psutil.cpu_percent(interval=None)
 
-        for input_ids, labels in train_loader:
+        for input_ids, _ in train_loader:
             input_ids = input_ids.to(device)
-            labels = labels.to(device)
+            input_ids = input_ids[:, :-1]  # Remove last token for input
+            labels = input_ids[:, 1:].clone()  # Shift left for labels
 
-            outputs = model_engine(input_ids, labels)
-            loss = criterion(outputs.view(-1, outputs.size(-1)), labels.view(-1))
+            outputs = model_engine(input_ids)
+            loss = criterion(outputs.view(-1, outputs.size(-1)), labels.reshape(-1))
 
             token_count = (labels != tokenizer.pad_token_id).sum().item()
             model_engine.backward(loss / token_count)
@@ -91,11 +92,13 @@ def train_with_deepspeed(
         test_loss, test_tokens = 0, 0
         total_correct, total_label_tokens = 0, 0
         with torch.no_grad():
-            for input_ids, labels in test_loader:
+            for input_ids, _ in test_loader:
                 input_ids = input_ids.to(device)
-                labels = labels.to(device)
-                logits = model_engine(input_ids, labels)
-                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+                input_ids = input_ids[:, :-1]  # Remove last token
+                labels = input_ids[:, 1:].clone()
+
+                logits = model_engine(input_ids)
+                loss = criterion(logits.view(-1, logits.size(-1)), labels.reshape(-1))
                 test_loss += loss.item()
                 test_tokens += (labels != tokenizer.pad_token_id).sum().item()
 
