@@ -3,6 +3,8 @@
 This project's aim is to implement a simple chatbot using sequence to sequence approach and perform different methods for training the model data. For the hardwares, i have used 2x Nvidia RTX 4090 to utilize multiple GPU Parallelization. I have compared Standard GPU Deepspeed acceleration from Microsoft, Accelerator from Huggingface, Pytorch DDP, and finally, training on GPU using pytorch. The goal of this project is to see which one of these techniques work better for relatively small dataset like this and possibly for a bigger LLM as well. Therefore, GPU oriented parts will require multiple GPUs to run.
 ## Setup
 
+It is also recommended to download the final.zip file in order to run on own directory. 
+
 Clone the Repository and Navigate
 
 ```
