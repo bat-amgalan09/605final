@@ -6,16 +6,19 @@ import psutil
 import deepspeed
 from dataload import prepare_data
 from gpt2_utils import load_gpt2_model_and_tokenizer
-
+import torch.distributed as dist
 
 def train_with_deepspeed(
     batch_size=8,
     epochs=10,
-    limit=3000,
+    limit=1000,
     save_dir="checkpoints/deepspeed"
 ):
     os.makedirs(save_dir, exist_ok=True)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    local_rank = int(os.getenv("LOCAL_RANK", "0"))
+    torch.cuda.set_device(local_rank)
+    device = torch.device(f"cuda:{local_rank}")
+    dist.init_process_group(backend="nccl")
 
     # Load GPT-2 tokenizer and model
     tokenizer, model = load_gpt2_model_and_tokenizer()
