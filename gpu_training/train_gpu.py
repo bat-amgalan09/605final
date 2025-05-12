@@ -19,12 +19,11 @@ def train_model_gpu(
 ) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
 
     os.makedirs(save_dir, exist_ok=True)
-
+    #Using Adama optimizer
     optimizer = optim.Adam(model.parameters(), lr=lr)
-
     train_losses, test_losses, times, mem_usage, throughputs, energies, grad_times, accuracies = [], [], [], [], [], [], [], []
     best_test_loss = float('inf')
-
+    #Starting the training
     for epoch in range(1, epochs + 1):
         model.train()
         epoch_start = time.time()
@@ -51,20 +50,20 @@ def train_model_gpu(
 
             total_loss += loss.item()
             total_tokens += token_count
-
+        #Time
         grad_times.append(time.time() - grad_start)
         epoch_time = time.time() - epoch_start
         times.append(epoch_time)
-
+        #Memory
         mem = torch.cuda.memory_allocated(device) / 1e6 if torch.cuda.is_available() else 0
         mem_usage.append(mem)
         cpu_percent_after = psutil.cpu_percent(interval=None)
         avg_cpu_percent = (cpu_percent_before + cpu_percent_after) / 2
         energies.append(avg_cpu_percent * epoch_time)
-
+        #Throughput
         throughput = len(train_loader.dataset) / epoch_time
         throughputs.append(throughput)
-
+    
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
 
@@ -75,7 +74,7 @@ def train_model_gpu(
         total_correct = 0
         total_label_tokens = 0
         pad_token_id = tokenizer.pad_token_id
-
+        # Accuracy calculation
         with torch.no_grad():
             for input_ids, labels in test_loader:
                 input_ids = input_ids.to(device)
@@ -87,7 +86,7 @@ def train_model_gpu(
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
 
-                # Shift logits and labels for GPT-2 accuracy
+                #Accuracy prediction
                 shift_logits = logits[:, :-1, :].contiguous()
                 shift_labels = labels[:, 1:].contiguous()
                 pred = shift_logits.argmax(dim=-1)
