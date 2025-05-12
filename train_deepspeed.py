@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import torch
 import torch.optim as optim
 import psutil
@@ -25,9 +24,15 @@ def train_with_deepspeed(
     train_loader, test_loader, _, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
     optimizer = optim.Adam(model.parameters(), lr=5e-5)
 
-    # Load DeepSpeed config from file
-    with open("ds_config.json") as f:
-        ds_config = json.load(f)
+    # Inline DeepSpeed config
+    ds_config = {
+        "train_batch_size": batch_size * torch.cuda.device_count(),
+        "gradient_accumulation_steps": 1,
+        "fp16": {"enabled": True},
+        "zero_optimization": {"stage": 1},
+        "steps_per_print": 100,
+        "wall_clock_breakdown": False
+    }
 
     # Initialize DeepSpeed
     model_engine, optimizer, _, _ = deepspeed.initialize(
