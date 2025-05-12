@@ -64,12 +64,10 @@ def train_with_deepspeed(
 
             outputs = model_engine(input_ids).float()
             if outputs.dim() == 2:
-                outputs = outputs.unsqueeze(1).expand(-1, labels.size(1), -1)
-  # Fix for LSTM output shape if missing sequence dim
+                outputs = outputs.unsqueeze(1).expand(-1, labels.size(1), -1)  # match sequence length
 
-            min_len = min(outputs.size(1), labels.size(1))
-            outputs = outputs[:, :min_len, :]
-            labels = labels[:, :min_len]
+            outputs = outputs[:, :labels.size(1), :]
+
 
             loss = criterion(outputs.reshape(-1, outputs.size(-1)), labels.reshape(-1))
             token_count = (labels != tokenizer.pad_token_id).sum().item()
