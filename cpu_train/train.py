@@ -19,7 +19,7 @@ def train_model(
     verbose=True
 ) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
 
-    print("🧠 Using train.py (single-core or GPU)...")
+    print("single-core or Apple GPU")
     os.makedirs(save_dir, exist_ok=True)
 
     criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, reduction='sum')
