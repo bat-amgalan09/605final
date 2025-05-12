@@ -12,7 +12,7 @@ from transformers import get_scheduler
 
 def train_with_deepspeed(
     limit=3000,
-    batch_size=64,
+    batch_size=32,
     epochs=10,
     save_dir='checkpoints/deepspeed'
 ):
@@ -61,9 +61,9 @@ def train_with_deepspeed(
         for input_ids, _ in train_loader:
             input_ids = input_ids.to(device)
             input_ids = input_ids[:, :-1]  # Remove last token for input
-            labels = input_ids[:, 1:].clone()  # Shift left for labels
+            labels = input_ids[:, 1:].clone().long()  # Shift left for labels and ensure long dtype
 
-            outputs = model_engine(input_ids)
+            outputs = model_engine(input_ids).float()  # ensure float dtype for logits
             loss = criterion(outputs.view(-1, outputs.size(-1)), labels.reshape(-1))
 
             token_count = (labels != tokenizer.pad_token_id).sum().item()
@@ -95,9 +95,9 @@ def train_with_deepspeed(
             for input_ids, _ in test_loader:
                 input_ids = input_ids.to(device)
                 input_ids = input_ids[:, :-1]  # Remove last token
-                labels = input_ids[:, 1:].clone()
+                labels = input_ids[:, 1:].clone().long()
 
-                logits = model_engine(input_ids)
+                logits = model_engine(input_ids).float()
                 loss = criterion(logits.view(-1, logits.size(-1)), labels.reshape(-1))
                 test_loss += loss.item()
                 test_tokens += (labels != tokenizer.pad_token_id).sum().item()
