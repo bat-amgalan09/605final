@@ -7,6 +7,8 @@ class ChatbotModel(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=0)
         self.encoder = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.decoder = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+        self.encoder.flatten_parameters()
+        self.decoder.flatten_parameters()
         self.fc = nn.Linear(hidden_size, vocab_size)
         self.dropout = nn.Dropout(dropout)
         self._init_weights()
