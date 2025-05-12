@@ -28,5 +28,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    metrics = train_with_deepspeed()
-    plot_metrics(*metrics, save_path="gpu_metrics_GPU.png")
