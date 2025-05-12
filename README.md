@@ -5,7 +5,7 @@ This project's aim is to implement a simple chatbot using sequence to sequence a
 
 It is also recommended to download the final.zip file in order to run on own directory. 
 
-Clone the Repository and Navigate
+When using github repository. Clone the Repository and Navigate
 
 ```
 git clone https://github.com/bat-amgalan09/605final.git
