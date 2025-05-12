@@ -1,6 +1,6 @@
 ## Overview
 
-This project's aim is to implement a simple chatbot using sequence to sequence approach and perform different methods for training the model data. For the hardwares, i have used 2x Nvidia RTX 4090 to utilize multiple GPU Parallelization. I have compared Standard GPU Deepspeed acceleration from Microsoft, Accelerator from Huggingface, Pytorch DDP, and finally, training on GPU using numba CUDA. The goal of this project is to see which one of these techniques work better for relatively small dataset like this and possibly for a bigger LLM as well. Therefore, GPU oriented parts will require multiple GPUs to run.
+This project's aim is to implement a simple chatbot using sequence to sequence approach and perform different methods for training the model data. For the hardwares, i have used 2x Nvidia RTX 4090 to utilize multiple GPU Parallelization. I have compared Standard GPU Deepspeed acceleration from Microsoft, Accelerator from Huggingface, Pytorch DDP, and finally, training on GPU using pytorch. The goal of this project is to see which one of these techniques work better for relatively small dataset like this and possibly for a bigger LLM as well. Therefore, GPU oriented parts will require multiple GPUs to run.
 ## Setup
 
 Clone the Repository and Navigate
@@ -32,7 +32,7 @@ All GPT-2 based chatbots are using the same [DailyDialog](https://huggingface.co
 python main_ddp.py
 python main.py
 accelerate launch —-num_processes=2 main_accelerator.py
-python main_numba.py
+python deepspeed_train.py
 python main_gpu.py
 ```
 Each run will give different training session with same epochs and batch size. Which then can be used to compare. With the model from DDP, there is an interactive chatbot function which can be called using.
