@@ -3,8 +3,8 @@ import time
 import torch
 import deepspeed
 import torch.nn.functional as F
-from dataload import prepare_data
-from gpt2_utils import load_gpt2_model_and_tokenizer
+from Chatbot_model.dataload import prepare_data
+from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
 
 # Training parameters
 EPOCHS = 10
@@ -61,9 +61,6 @@ def train():
     tokenizer, model = load_gpt2_model_and_tokenizer()
 
     # Optional: Freeze lower layers if needed
-    # for param in model.transformer.h[:6].parameters():
-    #     param.requires_grad = False
-
     model_engine, optimizer, _, _ = deepspeed.initialize(
         model=model,
         model_parameters=model.parameters(),
@@ -107,7 +104,7 @@ def train():
 
     total_time = time.time() - total_start
     peak_mem = torch.cuda.max_memory_allocated(model_engine.device) / 1024**3
-    print(f"\n[Summary] Total Time: {total_time:.2f}s | Peak GPU Memory: {peak_mem:.2f} GB")
+    print(f"\n[Summary] Total Time: {total_time:.2f}s, Peak GPU Memory: {peak_mem:.2f} GB")
 
 if __name__ == "__main__":
     train()
