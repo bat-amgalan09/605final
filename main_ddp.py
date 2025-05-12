@@ -32,5 +32,3 @@ if __name__ == '__main__':
         print("Energy:", energy)
         print("Gradient Times:", grad_times)
         print("Accuracies:", accuracies)
-    metrics = main()
-    plot_metrics(*metrics, save_path="gpu_metrics_deepspeed.png")
