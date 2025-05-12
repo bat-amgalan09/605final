@@ -5,8 +5,8 @@ import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
-from dataload import prepare_data
-from gpt2_utils import load_gpt2_model_and_tokenizer
+from Chatbot_model.dataload import prepare_data
+from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
 import time
 import psutil
 
@@ -77,7 +77,7 @@ def train_ddp(rank, limit, batch_size, epochs, queue):
         avg_train_loss = total_loss / total_tokens
         train_losses.append(avg_train_loss)
 
-        # Evaluation with GPT-2 shift fix
+        # Evaluation
         model.eval()
         test_loss, test_tokens = 0, 0
         total_correct = 0
@@ -96,7 +96,7 @@ def train_ddp(rank, limit, batch_size, epochs, queue):
                 test_loss += loss.item()
                 test_tokens += (labels != pad_token_id).sum().item()
 
-                # Shift for GPT-2 accuracy
+                ## Accuracy
                 shift_logits = logits[:, :-1, :].contiguous()
                 shift_labels = labels[:, 1:].contiguous()
                 mask = shift_labels != pad_token_id
