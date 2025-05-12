@@ -2,23 +2,22 @@ if __name__ == '__main__':
     import os
     import torch
     import numpy as np
-    from dataload import prepare_data
-    from model import ChatbotModel
-    from train import train_model  # For single-core and GPU (MPS)
-    from train_cpu import train_model as train_model_cpu  # For multi-core CPU
+    from Chatbot_model.dataload import prepare_data
+    from Chatbot_model.model import ChatbotModel
+    from cpu_train.train import train_model  # For single-core and GPU 
+    from cpu_train.train_cpu import train_model as train_model_cpu  # For multi-core CPU
     from torch.utils.data import Subset
     from torch.multiprocessing import Process, Queue, set_start_method
-    from visualize import plot_metrics
+    from plots.visualize import plot_metrics
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-    # Device Setup
+    # Setup
     #device = torch.device("cpu")  # Force CPU mode for parallel testing
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     ENABLE_PARALLEL = device.type == "cpu"
     print(f"Using device: {device}")
-
-    # Initialize metric containers
+    
     all_times = []
     all_mem = []
     all_throughputs = []
@@ -29,11 +28,11 @@ if __name__ == '__main__':
     all_test_losses = []
     labels = []
 
-    # Data Preparation
+    # Data prep
     train_loader, test_loader, vocab_size, tokenizer = prepare_data(batch_size=64, limit=100)
 
     # Single-Core Training
-    print("\n Starting Single-Core Training...")
+    print("\nSingle-Core Training")
     model = ChatbotModel(vocab_size).to(device)
     train_losses, test_losses, times, mem, throughputs, energies, grad_times, accuracies = train_model(
         model=model,
@@ -54,9 +53,9 @@ if __name__ == '__main__':
     all_train_losses = train_losses
     all_test_losses = test_losses
     labels.append("Single-core")
-# Multi-core CPU Training
+# Multi-core CPU Training:
 if ENABLE_PARALLEL:
-    print("\nStarting Multi-Core Training...")
+    print("\nMulti-Core Training")
     set_start_method("spawn", force=True)
     num_cores = 4
 
@@ -80,8 +79,6 @@ if ENABLE_PARALLEL:
 
     for p in processes:
         p.join()
-
-    #  This part was wrongly unindented — now fixed:
     process_metrics = []
     for _ in range(num_cores):
         rank, times, mem, throughputs, energies, grad_times, accuracies = queue.get()
@@ -126,4 +123,3 @@ if ENABLE_PARALLEL:
         test_losses=all_test_losses
     )
 
-    print("All training and visualization completed.")
