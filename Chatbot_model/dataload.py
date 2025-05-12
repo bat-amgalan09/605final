@@ -14,7 +14,7 @@ class ChatDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         tokens = torch.tensor(self.token_sequences[idx], dtype=torch.long)
-        return tokens, tokens.clone()  # GPT-2 uses input_ids and labels = same
+        return tokens, tokens.clone() 
 
 def collate_fn(batch, pad_token_id):
     input_ids = [item[0] for item in batch]
