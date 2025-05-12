@@ -1,8 +1,8 @@
 import torch
 import torch.multiprocessing as mp
-from train_ddp import train_ddp
+from Chatbot_model.train_ddp import train_ddp
 import os
-from visuals import plot_metrics
+from plots.visuals import plot_metrics
 if __name__ == '__main__':
     print(" Launching DDP Training Script")
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -10,11 +10,11 @@ if __name__ == '__main__':
 
     print(f"Using {num_gpus} GPU(s) with DDP simulation")
 
-    #  Create Queue inside __main__
+    #  Using spawn method to initialize Multiple
     mp.set_start_method("spawn", force=True)
     queue = mp.Queue() if num_gpus > 0 else None
 
-    # ⬇Pass the queue as an argument to all processes (only rank 0 will use it)
+    # Passing the queue as an argument to all processes
     mp.spawn(
         train_ddp,
         args=(100000, 64, 10, queue),
