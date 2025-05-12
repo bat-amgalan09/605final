@@ -2,7 +2,7 @@ import torch
 import torch.multiprocessing as mp
 from train_ddp import train_ddp
 import os
-
+from visuals import plot_metrics
 if __name__ == '__main__':
     print(" Launching DDP Training Script")
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # ⬇Pass the queue as an argument to all processes (only rank 0 will use it)
     mp.spawn(
         train_ddp,
-        args=(3000, 64, 10, queue),
+        args=(10000, 64, 10, queue),
         nprocs=num_gpus,
         join=True
     )
@@ -32,3 +32,5 @@ if __name__ == '__main__':
         print("Energy:", energy)
         print("Gradient Times:", grad_times)
         print("Accuracies:", accuracies)
+    metrics = train_with_deepspeed()
+    plot_metrics(*metrics, save_path="gpu_metrics_deepspeed.png")
