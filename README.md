@@ -41,9 +41,9 @@ Each run will give different training session with same epochs and batch size. W
 python chat_ddp_interactive.py
 ```
 
-##Project Structure
+## Project Structure
 
-```python
+```bash
 605final/
 ├── Call_func/               # Main_****.py functions to start training sessions
 ├── Chatbot_model/            # Data loading and chatbot
@@ -52,4 +52,7 @@ python chat_ddp_interactive.py
 ├── plots/             # Pictures and plots from comparisons
 ├── requirements.txt  
 └── README.md
-```    
+```
+## Python, hardware dependency
+
+Pytorch.ddp, cpu, standard gpu processes doesn't require specific versions. But multi GPU utilization will require the system to use CUDA 12.8.
