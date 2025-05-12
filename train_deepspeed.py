@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 def train_with_deepspeed(
     batch_size=32,
-    epochs=10,
+    epochs=30,
     limit=10000,
     save_dir="checkpoints/deepspeed"
 ):
