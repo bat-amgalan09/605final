@@ -60,11 +60,11 @@ def train_with_deepspeed(
 
         for input_ids, _ in train_loader:
             input_ids = input_ids.to(device)
-            input_ids = input_ids[:, :-1]  # Remove last token for input
-            labels = input_ids[:, 1:].clone().long()  # Shift left for labels and ensure long dtype
+            labels = input_ids[:, 1:].clone().long()
+            input_ids = input_ids[:, :-1]  # input and label aligned
 
-            outputs = model_engine(input_ids).float()  # ensure float dtype for logits
-            loss = criterion(outputs.view(-1, outputs.size(-1)), labels.reshape(-1))
+            outputs = model_engine(input_ids).float()
+            loss = criterion(outputs.view(-1, outputs.size(-1)), labels.view(-1))
 
             token_count = (labels != tokenizer.pad_token_id).sum().item()
             model_engine.backward(loss / token_count)
@@ -94,11 +94,11 @@ def train_with_deepspeed(
         with torch.no_grad():
             for input_ids, _ in test_loader:
                 input_ids = input_ids.to(device)
-                input_ids = input_ids[:, :-1]  # Remove last token
                 labels = input_ids[:, 1:].clone().long()
+                input_ids = input_ids[:, :-1]
 
                 logits = model_engine(input_ids).float()
-                loss = criterion(logits.view(-1, logits.size(-1)), labels.reshape(-1))
+                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
                 test_loss += loss.item()
                 test_tokens += (labels != tokenizer.pad_token_id).sum().item()
 
