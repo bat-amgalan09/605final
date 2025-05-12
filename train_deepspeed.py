@@ -63,8 +63,13 @@ def train_with_deepspeed(
             labels = input_ids[:, 1:].clone().long()
             input_ids = input_ids[:, :-1]  # input and label aligned
 
-            outputs = model_engine(input_ids).float()
-            loss = criterion(outputs.view(-1, outputs.size(-1)), labels.view(-1))
+            outputs = model_engine(input_ids).float()  # shape: [batch, seq_len, vocab]
+            if outputs.size(1) != labels.size(1):
+                min_len = min(outputs.size(1), labels.size(1))
+                outputs = outputs[:, :min_len, :]
+                labels = labels[:, :min_len]
+            loss = criterion(outputs.reshape(-1, outputs.size(-1)), labels.reshape(-1))
+
 
             token_count = (labels != tokenizer.pad_token_id).sum().item()
             model_engine.backward(loss / token_count)
