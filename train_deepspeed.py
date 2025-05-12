@@ -7,7 +7,6 @@ import deepspeed
 import psutil
 from dataload import prepare_data
 from model import ChatbotModel
-from transformers import get_scheduler
 
 
 def train_with_deepspeed(
@@ -46,28 +45,25 @@ def train_with_deepspeed(
         config=ds_config
     )
 
-    train_losses, test_losses, times, mem_usage, throughputs, energies, grad_times, accuracies = [], [], [], [], [], [], [], []
-    best_test_loss = float('inf')
-
     for epoch in range(1, epochs + 1):
         model_engine.train()
         epoch_start = time.time()
-        grad_start = time.time()
 
         total_loss, total_tokens = 0, 0
-        cpu_before = psutil.cpu_percent(interval=None)
 
         for input_ids, _ in train_loader:
             input_ids = input_ids.to(device)
-            labels = input_ids[:, 1:].clone().long()
+            labels = input_ids[:, 1:].clone()
             input_ids = input_ids[:, :-1]
+
+            outputs = model_engine(input_ids)
+
+            # Align lengths safely
+            min_len = min(outputs.size(1), labels.size(1))
+            outputs = outputs[:, :min_len, :]
+            labels = labels[:, :min_len]
+
             labels = labels.clamp(min=0, max=vocab_size - 1)
-
-            outputs = model_engine(input_ids).float()
-            if outputs.dim() == 2:
-                outputs = outputs.unsqueeze(1).expand(-1, labels.size(1), -1)
-
-            outputs = outputs[:, :labels.size(1), :]
 
             loss = criterion(outputs.reshape(-1, outputs.size(-1)), labels.reshape(-1))
             token_count = (labels != tokenizer.pad_token_id).sum().item()
@@ -77,63 +73,47 @@ def train_with_deepspeed(
             total_loss += loss.item()
             total_tokens += token_count
 
-        grad_times.append(time.time() - grad_start)
         epoch_time = time.time() - epoch_start
-        times.append(epoch_time)
-
-        mem = torch.cuda.memory_allocated(device) / 1e6
-        mem_usage.append(mem)
-        cpu_after = psutil.cpu_percent(interval=None)
-        energies.append(((cpu_before + cpu_after) / 2) * epoch_time)
-
-        throughput = len(train_loader.dataset) / epoch_time
-        throughputs.append(throughput)
         avg_train_loss = total_loss / total_tokens
-        train_losses.append(avg_train_loss)
 
+        print(f"[DeepSpeed] Epoch {epoch}: Train Loss = {avg_train_loss:.4f}, Time = {epoch_time:.2f}s")
+
+        # Evaluation
         model_engine.eval()
         test_loss, test_tokens = 0, 0
         total_correct, total_label_tokens = 0, 0
+
         with torch.no_grad():
             for input_ids, _ in test_loader:
                 input_ids = input_ids.to(device)
-                labels = input_ids[:, 1:].clone().long()
+                labels = input_ids[:, 1:].clone()
                 input_ids = input_ids[:, :-1]
-                labels = labels.clamp(min=0, max=vocab_size - 1)
 
-                logits = model_engine(input_ids).float()
-                if logits.dim() == 2:
-                    logits = logits.unsqueeze(1)
+                outputs = model_engine(input_ids)
 
-                min_len = min(logits.size(1), labels.size(1))
-                logits = logits[:, :min_len, :]
+                min_len = min(outputs.size(1), labels.size(1))
+                outputs = outputs[:, :min_len, :]
                 labels = labels[:, :min_len]
 
-                loss = criterion(logits.reshape(-1, logits.size(-1)), labels.reshape(-1))
+                labels = labels.clamp(min=0, max=vocab_size - 1)
+
+                loss = criterion(outputs.reshape(-1, outputs.size(-1)), labels.reshape(-1))
                 test_loss += loss.item()
                 test_tokens += (labels != tokenizer.pad_token_id).sum().item()
 
-                pred = logits.argmax(dim=-1)
+                pred = outputs.argmax(dim=-1)
                 correct = ((pred == labels) & (labels != tokenizer.pad_token_id)).sum().item()
                 total = (labels != tokenizer.pad_token_id).sum().item()
                 total_correct += correct
                 total_label_tokens += total
 
         avg_test_loss = test_loss / test_tokens
-        test_losses.append(avg_test_loss)
         accuracy = total_correct / total_label_tokens if total_label_tokens > 0 else 0.0
-        accuracies.append(accuracy)
 
-        if model_engine.is_gradient_accumulation_boundary():
-            print(f"[DeepSpeed] Epoch {epoch}: Train Loss = {avg_train_loss:.4f}, Time = {epoch_time:.2f}s, "
-                  f"CPU = {energies[-1]/epoch_time:.2f}%, Mem = {mem:.2f} MB, Throughput = {throughput:.2f} samples/s")
-            print(f"[DeepSpeed] Epoch {epoch}: Test Loss = {avg_test_loss:.4f}, Accuracy = {accuracy:.4f}")
+        print(f"[DeepSpeed] Epoch {epoch}: Test Loss = {avg_test_loss:.4f}, Accuracy = {accuracy:.4f}")
 
-        if avg_test_loss < best_test_loss:
-            best_test_loss = avg_test_loss
-            model_engine.save_checkpoint(save_dir, tag=f"best_epoch{epoch}")
-
-    return train_losses, test_losses, times, mem_usage, throughputs, energies, grad_times, accuracies
+        if avg_test_loss < 1e9:
+            model_engine.save_checkpoint(save_dir, tag=f"epoch{epoch}")
 
 
 if __name__ == "__main__":
