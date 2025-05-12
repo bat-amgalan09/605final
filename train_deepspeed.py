@@ -1,117 +1,98 @@
 import os
 import time
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from transformers import AutoTokenizer, get_scheduler
-from torch.optim import AdamW
+import torch.optim as optim
+import psutil
 import deepspeed
-import GPUtil
-from datasets import load_dataset
-from model import ChatbotModel
+from dataload import prepare_data
+from gpt2_utils import load_gpt2_model_and_tokenizer
 
 
-def collate_fn(batch):
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    inputs = [dialog["dialog"][-1] for dialog in batch]  # last utterance as input
-    targets = [dialog["dialog"][-1] for dialog in batch]  # using same for simplicity
-
-    tokenized = tokenizer(
-        inputs,
-        padding=True,
-        truncation=True,
-        return_tensors="pt"
-    )
-
-    labels = tokenizer(
-        targets,
-        padding=True,
-        truncation=True,
-        return_tensors="pt"
-    )["input_ids"]
-
-    tokenized["labels"] = labels
-    return tokenized
-
-
-def get_gpu_memory():
-    gpus = GPUtil.getGPUs()
-    mem_used = sum([gpu.memoryUsed for gpu in gpus])
-    mem_total = sum([gpu.memoryTotal for gpu in gpus])
-    return mem_used, mem_total
-
-
-def main():
-    # Hyperparameters
-    epochs = 10
-    batch_size = 8  # per GPU
-    lr = 5e-5
-    save_dir = "checkpoints_deepspeed"
+def train_with_deepspeed(batch_size=8, epochs=10, limit=3000, save_dir="checkpoints/deepspeed"):
     os.makedirs(save_dir, exist_ok=True)
 
-    # Model and tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    vocab_size = tokenizer.vocab_size
-    model = ChatbotModel(vocab_size=vocab_size)
-    model = model.cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer, model = load_gpt2_model_and_tokenizer()
 
-    # Dataset
-    dataset = load_dataset("daily_dialog")
-    train_dataset = dataset["train"].select(range(3000))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    train_loader, test_loader, _, tokenizer = prepare_data(batch_size=batch_size, limit=limit)
 
-    # Optimizer
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=5e-5)
 
-    # DeepSpeed config inline
     ds_config = {
         "train_batch_size": batch_size * torch.cuda.device_count(),
         "gradient_accumulation_steps": 1,
         "fp16": {"enabled": True},
         "zero_optimization": {"stage": 2}
-        
     }
 
-    # Initialize DeepSpeed
     model_engine, optimizer, _, _ = deepspeed.initialize(
         model=model,
         optimizer=optimizer,
         config=ds_config
     )
 
+    best_test_loss = float("inf")
+    pad_token_id = tokenizer.pad_token_id
 
-
-    loss_fn = nn.CrossEntropyLoss()
-
-    # Training loop
-    for epoch in range(epochs):
+    for epoch in range(1, epochs + 1):
         model_engine.train()
-        total_loss = 0.0
+        total_loss, total_tokens = 0, 0
         start_time = time.time()
+        cpu_before = psutil.cpu_percent(interval=None)
 
-        for batch in train_loader:
-            input_ids = batch["input_ids"].cuda()
-            attention_mask = batch["attention_mask"].cuda()
-            labels = batch["labels"].cuda()
+        for input_ids, labels in train_loader:
+            input_ids = input_ids.to(device)
+            labels = labels.to(device)
 
-            outputs = model_engine(input_ids=input_ids, attention_mask=attention_mask)
-            loss = loss_fn(outputs.view(-1, outputs.size(-1)), labels.view(-1))
-
+            outputs = model_engine(input_ids=input_ids, labels=labels)
+            loss = outputs.loss
             model_engine.backward(loss)
             model_engine.step()
 
+            token_count = (labels != pad_token_id).sum().item()
             total_loss += loss.item()
+            total_tokens += token_count
 
-        end_time = time.time()
-        mem_used, mem_total = get_gpu_memory()
+        epoch_time = time.time() - start_time
+        cpu_after = psutil.cpu_percent(interval=None)
+        avg_cpu = (cpu_before + cpu_after) / 2
+        mem = torch.cuda.memory_allocated(device) / 1e6
+        throughput = len(train_loader.dataset) / epoch_time
+        avg_loss = total_loss / total_tokens
 
-        print(f"[Epoch {epoch+1}] Loss: {total_loss/len(train_loader):.4f} | "
-              f"Time: {end_time - start_time:.2f}s | "
-              f"GPU Mem: {mem_used:.2f}/{mem_total:.2f} MB")
+        print(f"[DeepSpeed] Epoch {epoch}: Train Loss = {avg_loss:.4f}, Time = {epoch_time:.2f}s, "
+              f"CPU = {avg_cpu:.2f}%, Mem = {mem:.2f} MB, Throughput = {throughput:.2f} samples/s")
 
-        # Save checkpoint
-        model_engine.save_checkpoint(save_dir, tag=f"epoch_{epoch+1}")
+        # Evaluation
+        model_engine.eval()
+        test_loss, test_tokens = 0, 0
+        correct, total_label_tokens = 0, 0
 
+        with torch.no_grad():
+            for input_ids, labels in test_loader:
+                input_ids = input_ids.to(device)
+                labels = labels.to(device)
+                outputs = model_engine(input_ids=input_ids, labels=labels)
+                loss = outputs.loss
+                logits = outputs.logits
+                test_loss += loss.item()
+                test_tokens += (labels != pad_token_id).sum().item()
+
+                shift_logits = logits[:, :-1, :].contiguous()
+                shift_labels = labels[:, 1:].contiguous()
+                preds = shift_logits.argmax(dim=-1)
+                mask = (shift_labels != pad_token_id)
+                correct += ((preds == shift_labels) & mask).sum().item()
+                total_label_tokens += mask.sum().item()
+
+        avg_test_loss = test_loss / test_tokens
+        accuracy = correct / total_label_tokens if total_label_tokens > 0 else 0.0
+
+        print(f"[DeepSpeed] Epoch {epoch}: Test Loss = {avg_test_loss:.4f}, Accuracy = {accuracy:.4f}")
+
+        if avg_test_loss < best_test_loss:
+            best_test_loss = avg_test_loss
+            model_engine.save_checkpoint(save_dir, tag=f"best_epoch{epoch}")
 
 if __name__ == "__main__":
-    main()
+    train_with_deepspeed()
