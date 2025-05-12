@@ -9,7 +9,7 @@ from dataload import prepare_data
 EPOCHS = 10
 BATCH_SIZE = 64
 MAX_LEN = 64
-LIMIT = 1000
+LIMIT = 10000
 
 def loss_fn(logits, labels, pad_token_id):
     shift_logits = logits[:, :-1, :].contiguous()
