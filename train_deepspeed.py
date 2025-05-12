@@ -61,13 +61,13 @@ def train_with_deepspeed(
             input_ids = input_ids.to(device)
             labels = input_ids[:, 1:].clone().long()
             input_ids = input_ids[:, :-1]
+            labels = labels.clamp(min=0, max=vocab_size - 1)
 
             outputs = model_engine(input_ids).float()
             if outputs.dim() == 2:
-                outputs = outputs.unsqueeze(1).expand(-1, labels.size(1), -1)  # match sequence length
+                outputs = outputs.unsqueeze(1).expand(-1, labels.size(1), -1)
 
             outputs = outputs[:, :labels.size(1), :]
-
 
             loss = criterion(outputs.reshape(-1, outputs.size(-1)), labels.reshape(-1))
             token_count = (labels != tokenizer.pad_token_id).sum().item()
@@ -99,6 +99,7 @@ def train_with_deepspeed(
                 input_ids = input_ids.to(device)
                 labels = input_ids[:, 1:].clone().long()
                 input_ids = input_ids[:, :-1]
+                labels = labels.clamp(min=0, max=vocab_size - 1)
 
                 logits = model_engine(input_ids).float()
                 if logits.dim() == 2:
