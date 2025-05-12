@@ -14,7 +14,7 @@ if __name__ == '__main__':
     mp.set_start_method("spawn", force=True)
     queue = mp.Queue() if num_gpus > 0 else None
 
-    # ⬇️ Pass the queue as an argument to all processes (only rank 0 will use it)
+    # ⬇Pass the queue as an argument to all processes (only rank 0 will use it)
     mp.spawn(
         train_ddp,
         args=(3000, 64, 10, queue),
