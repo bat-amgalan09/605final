@@ -15,5 +15,5 @@ matplotlib
 tqdm
 psutil
 
-
+seaborn
 pandas
