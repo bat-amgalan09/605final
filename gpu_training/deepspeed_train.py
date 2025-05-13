@@ -3,8 +3,8 @@ import time
 import torch
 import deepspeed
 import torch.nn.functional as F
-from Chatbot_model.dataload import prepare_data
-from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
+from dataload import prepare_data
+from gpt2_utils import load_gpt2_model_and_tokenizer
 
 # Training parameters
 EPOCHS = 10
