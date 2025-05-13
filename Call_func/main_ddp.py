@@ -1,8 +1,8 @@
 import torch
 import torch.multiprocessing as mp
-from Chatbot_model.train_ddp import train_ddp
+from train_ddp import train_ddp
 import os
-from plots.visuals import plot_metrics
+from isuals import plot_metrics
 if __name__ == '__main__':
     print(" Launching DDP Training Script")
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
