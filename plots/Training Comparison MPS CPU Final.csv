@@ -1,0 +1,8 @@
+Method,Final Accuracy,Final Test Loss,Total Time (s),Peak Memory (MB),Peak Energy (J),Throughput (samples/sec)
+DDP,0.8975,0.0001,107.93,4026,,135.27
+GPU (Standard),0.468,0.0006,151.5,3527,95.45,66
+HF Accelerator,0.796,0.0002,109.1,4635,111.86,91.64
+DeepSpeed,0.8334,0.4389,159.35,5930,,62.75
+Apple MPS (1 GPU),0.53,0.0004,652.4,868.14,2218.3,153.28019619865114
+CPU (Single-Core),,6.197,3,3225.02,6461.32,31.804592583169008
+CPU (Multi-Core),,6.197,1100,3250,5500,90.90909091
