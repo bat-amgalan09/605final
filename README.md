@@ -77,5 +77,5 @@ Use visuals function to visualize the given test results
 
 ![Training Metrics](plots/GPUTraining.png)
 
-![Cpu metrics](plots/MPS vs CPU Comparison Plot.png)
+![Cpu metrics](plots/MPSvsCPUComparisonPlot.png)
 
