@@ -19,7 +19,7 @@ conda create -n mvenv python=3.10
 conda activate mvenv
 ```
 
-Install requirements
+Install requirements (Training data will be downloaded automatically)
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -37,6 +37,8 @@ accelerate launch —-num_processes=2 main_accelerator.py
 python deepspeed_train.py
 python main_gpu.py
 ```
+All the parameters are in train functions excepts for deepspeed test where params are in ds_config.json
+
 Each run will give different training session with same epochs and batch size. Which then can be used to compare. With the model from DDP, there is an interactive chatbot function which can be called using.
 
 ```bash
@@ -59,3 +61,18 @@ python chat_ddp_interactive.py
 
 Cpu, standard gpu processes doesn't require specific versions. But multi GPU utilization will require the system to use CUDA 12+ with correct driver to be used. As for ALPA, it is confusing to find right versions due to its dependency on JAXlib.
 
+## Docker support
+
+Build docker image or use the prebuilt one with main func as main_gpu
+
+```bash
+docker build -t dockerhubusername/chatbot_try
+docker pull amgalan09/chatbot_try
+docker run --rm amgalan09/chatbot_try
+```
+
+## Result
+
+Use visuals function to visualize the given test results
+
+![Training Metrics](plots/GPUTraining.png)
