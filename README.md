@@ -76,3 +76,6 @@ docker run --rm amgalan09/chatbot_try
 Use visuals function to visualize the given test results
 
 ![Training Metrics](plots/GPUTraining.png)
+
+![Cpu metrics](plots/CPUcomparison.png)
+
