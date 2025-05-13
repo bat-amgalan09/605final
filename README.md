@@ -81,4 +81,4 @@ Use visuals function to visualize the given test results
 
 Video Demonstration of training DDP version with 2x GPU and live interactive chatbot function is can be found:
 
-[https://drive.google.com/file/d/19HWdjZ54Z0cLXvUM8RbksWGTDKibhu9S/view?usp=sharing]
+[DDP Bot demo](https://drive.google.com/file/d/19HWdjZ54Z0cLXvUM8RbksWGTDKibhu9S/view?usp=sharing)
