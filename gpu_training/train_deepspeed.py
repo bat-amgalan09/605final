@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import deepspeed
 import logging
 import psutil
-from Chatbot_model.dataload import prepare_data
-from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
+from dataload import prepare_data
+from gpt2_utils import load_gpt2_model_and_tokenizer
 
 def setup_logging():
     """Configure logging with rank-specific output."""
