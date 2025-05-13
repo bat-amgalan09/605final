@@ -1,10 +1,10 @@
 import torch
 from torch.utils.data import DataLoader
 from datasets import load_dataset
-from Chatbot_model.dataload import prepare_data
-from gpu_training.train_gpu import train_model_gpu
-from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
-from plots.visuals import plot_metrics
+from dataload import prepare_data
+from train_gpu import train_model_gpu
+from gpt2_utils import load_gpt2_model_and_tokenizer
+from visuals import plot_metrics
 
 
 def main():
