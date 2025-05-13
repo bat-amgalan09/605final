@@ -13,7 +13,7 @@ def main():
     tokenizer, model = load_gpt2_model_and_tokenizer()
     model = model.to(device)
 
-    train_loader, test_loader, _, tokenizer = prepare_data(batch_size=64, limit=10000)
+    train_loader, test_loader, _, tokenizer = prepare_data(batch_size=64, limit=100000)
 
     train_model_gpu(
         model=model,
