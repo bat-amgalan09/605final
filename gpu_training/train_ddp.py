@@ -5,8 +5,8 @@ import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
-from Chatbot_model.dataload import prepare_data
-from Chatbot_model.gpt2_utils import load_gpt2_model_and_tokenizer
+from dataload import prepare_data
+from gpt2_utils import load_gpt2_model_and_tokenizer
 import time
 import psutil
 
