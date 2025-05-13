@@ -28,7 +28,7 @@ CONFIG = {
     "epochs": 20,
     "batch_size": 64,
     "max_len": 50,
-    "limit": 10000,
+    "limit": 100000,
     "checkpoint_dir": "checkpoints/deepspeed_gpt2",
     "seed": 42,
     "gpu_power_watts": 250  # Power draw per GPU (W), adjustable
