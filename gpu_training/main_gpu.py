@@ -4,9 +4,9 @@ from datasets import load_dataset
 from dataload import prepare_data
 from train_gpu import train_model_gpu
 from gpt2_utils import load_gpt2_model_and_tokenizer
-from visuals import plot_metrics
 
 
+# Setting the epoch learning and setting GPU  
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
