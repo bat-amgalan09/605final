@@ -11,7 +11,7 @@ EPOCHS = 10
 BATCH_SIZE = 64
 MAX_LEN = 50
 LIMIT = 100000
-
+#Loss functions
 def loss_fn(logits, labels, pad_token_id):
     shift_logits = logits[:, :-1, :].contiguous()
     shift_labels = labels[:, 1:].contiguous()
@@ -21,7 +21,7 @@ def loss_fn(logits, labels, pad_token_id):
         ignore_index=pad_token_id
     )
     return loss
-
+# Model Evaluation custom for GPU
 def evaluate(model_engine, dataloader, pad_token_id):
     model_engine.eval()
     total_loss = 0
@@ -51,16 +51,18 @@ def evaluate(model_engine, dataloader, pad_token_id):
     return avg_loss, accuracy
 
 def train():
+    #SAving the best model
     os.makedirs("checkpoints/deepspeed_gpt2", exist_ok=True)
     
     train_loader, test_loader, _, tokenizer = prepare_data(
         batch_size=BATCH_SIZE, max_len=MAX_LEN, limit=LIMIT
     )
+    #PAdding
     pad_token_id = tokenizer.pad_token_id
 
     tokenizer, model = load_gpt2_model_and_tokenizer()
 
-    # Optional: Freeze lower layers if needed
+    #Freeze lower layers if needed and use Zero stage 2
     model_engine, optimizer, _, _ = deepspeed.initialize(
         model=model,
         model_parameters=model.parameters(),
@@ -70,7 +72,7 @@ def train():
     torch.cuda.reset_peak_memory_stats()
     total_start = time.time()
     best_test_loss = float('inf')
-
+    #Initializing the epoch
     for epoch in range(1, EPOCHS + 1):
         model_engine.train()
         total_loss = 0
@@ -90,7 +92,7 @@ def train():
 
             total_loss += loss.item()
             total_tokens += tokens
-
+        #Loss calc
         train_loss = total_loss / total_tokens
         test_loss, accuracy = evaluate(model_engine, test_loader, pad_token_id)
         epoch_time = time.time() - start_time
