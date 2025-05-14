@@ -34,7 +34,7 @@ All GPT-2 based chatbots are using the same [DailyDialog](https://huggingface.co
 python main_ddp.py
 python main.py
 accelerate launch —-num_processes=2 main_accelerator.py
-python deepspeed_train.py
+deepspeed deepspeed_train.py
 python main_gpu.py
 ```
 All the parameters are in train functions excepts for deepspeed test where params are in ds_config.json
