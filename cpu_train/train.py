@@ -6,6 +6,7 @@ import time
 import psutil
 from typing import List, Tuple
 
+# TRains the model and setting up the parameters
 def train_model(
     model,
     train_loader,
@@ -18,13 +19,13 @@ def train_model(
     save_dir='checkpoints',
     verbose=True
 ) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
-
+    #Defaults to CPU but uses GPU if available based on cuda
     print("single-core or Apple GPU")
     os.makedirs(save_dir, exist_ok=True)
-
+    #metrics
     criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, reduction='sum')
     optimizer = optim.Adam(model.parameters(), lr=lr)
-
+    
     train_losses, test_losses = [], []
     times, mem_usage, energies, throughputs, grad_times, accuracies = [], [], [], [], [], []
     best_test_loss = float('inf')
@@ -37,7 +38,7 @@ def train_model(
         epoch_start_time = time.time()
         grad_start_time = time.time()
         cpu_percent_before = psutil.cpu_percent(interval=None)
-
+        #Accuracy with label shifting
         for input_ids, labels in train_loader:
             input_ids = input_ids.to(device)
             labels = labels.to(device)
