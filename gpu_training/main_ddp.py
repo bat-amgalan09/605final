@@ -2,9 +2,9 @@ import torch
 import torch.multiprocessing as mp
 from train_ddp import train_ddp
 import os
-
+#Calling the main funciton
 if __name__ == '__main__':
-    print(" Launching DDP Training Script")
+    print(" Launching DDP:")
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     num_gpus = torch.cuda.device_count()
 
@@ -15,13 +15,14 @@ if __name__ == '__main__':
     queue = mp.Queue() if num_gpus > 0 else None
 
     # Passing the queue as an argument to all processes
+    #Limiting the number to 100000
     mp.spawn(
         train_ddp,
         args=(100000, 64, 10, queue),
         nprocs=num_gpus,
         join=True
     )
-
+# Metrics to show
     if queue is not None:
         train_losses, test_losses, times, mem, energy, grad_times, accuracies = queue.get()
         print("Collected metrics from DDP rank 0:")
