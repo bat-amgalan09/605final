@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset
 from transformers import AutoTokenizer
 from typing import Tuple
-
+#Loading the dataset
 class ChatDataset(torch.utils.data.Dataset):
     def __init__(self, token_sequences):
         self.token_sequences = token_sequences
@@ -15,21 +15,21 @@ class ChatDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         tokens = torch.tensor(self.token_sequences[idx], dtype=torch.long)
         return tokens, tokens.clone() 
-
+#RNN padding
 def collate_fn(batch, pad_token_id):
     input_ids = [item[0] for item in batch]
     labels = [item[1] for item in batch]
     input_padded = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=True, padding_value=pad_token_id)
     labels_padded = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=pad_token_id)
     return input_padded, labels_padded
-
+## MAx length set 64, and batch size 64
 def prepare_data(tokenizer_name='gpt2', max_len=64, batch_size=64, limit=None):
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     tokenizer.pad_token = tokenizer.eos_token
 
     dataset = load_dataset('daily_dialog', split='train', trust_remote_code=True)
     dialog_pairs = []
-
+    ## Separates as input and target text for final
     for dialog in dataset['dialog']:
         for i in range(len(dialog) - 1):
             input_text = dialog[i][:500]
@@ -40,14 +40,14 @@ def prepare_data(tokenizer_name='gpt2', max_len=64, batch_size=64, limit=None):
 
     if limit:
         dialog_pairs = dialog_pairs[:limit]
-
+    
     np.random.shuffle(dialog_pairs)
 
     token_sequences = [
         tokenizer(text, truncation=True, padding='max_length', max_length=max_len)["input_ids"]
         for text in dialog_pairs
     ]
-
+    #Splitting
     split = int(0.8 * len(token_sequences))
     train_dataset = ChatDataset(token_sequences[:split])
     test_dataset = ChatDataset(token_sequences[split:])
