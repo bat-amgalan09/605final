@@ -7,7 +7,7 @@ from accelerate import Accelerator
 from dataload import prepare_data
 from gpt2_utils import load_gpt2_model_and_tokenizer
 from typing import List, Tuple
-
+#Saving the checkpoint and setting the params
 def train_with_accelerator(
     limit: int = 10000,
     batch_size: int = 64,
@@ -24,18 +24,18 @@ def train_with_accelerator(
     # GPT-2 model
     tokenizer, model = load_gpt2_model_and_tokenizer()
     model = model.to(device)
-    # Optimizer
+    # Optimizer =  ADAMw
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     model, optimizer, train_loader, test_loader = accelerator.prepare(model, optimizer, train_loader, test_loader)
 
     train_losses, test_losses = [], []
     times, mem_usage, energies, grad_times, accuracies = [], [], [], [], []
     best_test_loss = float('inf')
-
+    #initializing the epoch
     for epoch in range(1, epochs + 1):
         model.train()
         total_loss, total_tokens = 0, 0
-
+        #CPU usage and time metric
         cpu_percent_before = psutil.cpu_percent(interval=None)
         epoch_start = time.time()
         grad_start = time.time()
@@ -57,7 +57,7 @@ def train_with_accelerator(
         grad_times.append(time.time() - grad_start)
         epoch_time = time.time() - epoch_start
         times.append(epoch_time)
-
+        ##memory and throughput
         mem = torch.cuda.memory_allocated(device) / 1e6 if torch.cuda.is_available() else 0
         mem_usage.append(mem)
         cpu_percent_after = psutil.cpu_percent(interval=None)
@@ -74,7 +74,7 @@ def train_with_accelerator(
         total_correct = 0
         total_label_tokens = 0
         pad_token_id = tokenizer.pad_token_id
-
+        ##CHecking the accuracy with label shifting
         with torch.no_grad():
             for input_ids, labels in test_loader:
                 outputs = model(input_ids=input_ids, labels=labels)
