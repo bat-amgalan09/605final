@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Use a nice Seaborn style
+#Seaborn style for better looking visuals other than visuals.py
 sns.set(style="whitegrid", font_scale=1.2)
 
 def plot_metrics(train_losses, test_losses, times, mem_usage, throughputs, accuracies, save_path="gpu_metrics.png"):
@@ -9,7 +9,7 @@ def plot_metrics(train_losses, test_losses, times, mem_usage, throughputs, accur
 
     plt.figure(figsize=(16, 10))
 
-    # 1. Loss plot
+    # Loss plot
     plt.subplot(2, 2, 1)
     sns.lineplot(x=epochs, y=train_losses, label="Train Loss")
     sns.lineplot(x=epochs, y=test_losses, label="Test Loss")
@@ -18,21 +18,21 @@ def plot_metrics(train_losses, test_losses, times, mem_usage, throughputs, accur
     plt.title("Loss Over Epochs")
     plt.legend()
 
-    # 2. Time per epoch
+    # Time per epoch
     plt.subplot(2, 2, 2)
     sns.lineplot(x=epochs, y=times, marker="o")
     plt.xlabel("Epoch")
     plt.ylabel("Time (s)")
     plt.title("Training Time Per Epoch")
 
-    # 3. GPU memory usage
+    #  memory usage
     plt.subplot(2, 2, 3)
     sns.lineplot(x=epochs, y=mem_usage, marker="o", color="purple")
     plt.xlabel("Epoch")
     plt.ylabel("Memory (MB)")
     plt.title("GPU Memory Usage")
 
-    # 4. Throughput + Accuracy
+    # 4.Throughput  and Accuracy
     plt.subplot(2, 2, 4)
     sns.lineplot(x=epochs, y=throughputs, label="Throughput (samples/s)")
     sns.lineplot(x=epochs, y=accuracies, label="Accuracy", color="green")
@@ -42,4 +42,4 @@ def plot_metrics(train_losses, test_losses, times, mem_usage, throughputs, accur
 
     plt.tight_layout()
     plt.savefig(save_path)
-    print(f"✅ Benchmark plot saved to: {save_path}")
+    print(f" Benchmark plt save: {save_path}")
