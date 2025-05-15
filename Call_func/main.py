@@ -2,8 +2,8 @@ if __name__ == '__main__':
     import os
     import torch
     import numpy as np
-    from Chatbot_model.dataload import prepare_data
-    from Chatbot_model.model import ChatbotModel
+    from gpu_training.dataload import prepare_data
+    from gpu_trainingmodel import ChatbotModel
     from cpu_train.train import train_model  # For single-core and GPU 
     from cpu_train.train_cpu import train_model as train_model_cpu  # For multi-core CPU
     from torch.utils.data import Subset
